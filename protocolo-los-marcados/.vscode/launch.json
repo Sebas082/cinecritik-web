@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Ejecutar VerifyDB",
+            "request": "launch",
+            "mainClass": "VerifyDB"
+        },
+        {
+            "type": "java",
+            "name": "Ejecutar Servidor (Main)",
+            "request": "launch",
+            "mainClass": "Main"
+        }
+    ]
+}
