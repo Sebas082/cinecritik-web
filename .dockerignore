@@ -1,0 +1,16 @@
+.git
+.vscode
+.gemini
+protocolo-los-marcados/backend/out
+protocolo-los-marcados/data
+*.db
+*.log
+*.bat
+README.md
+implementation_plan.md
+task.md
+walkthrough.md
+Scrub.java
+organize.bat
+run.bat
+INICIAR_CINECRITIK_AQUI.bat
