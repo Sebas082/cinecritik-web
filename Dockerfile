@@ -1,5 +1,5 @@
-# Usar una imagen oficial de Java (JDK)
-FROM openjdk:11-jdk-slim
+# Usar una imagen oficial de Java (JDK) de Eclipse Temurin (más moderna y segura)
+FROM eclipse-temurin:11-jdk
 
 # Directorio de trabajo en el contenedor
 WORKDIR /app
