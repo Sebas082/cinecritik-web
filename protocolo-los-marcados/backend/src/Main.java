@@ -63,8 +63,6 @@ public class Main {
         new CriticoExperto("Aleja")
     };
 
-    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", PORT), 0);
-
     // Static: Look for the frontend folder in the parent directory
     Path webRootTmp = Paths.get("..", "frontend").toAbsolutePath().normalize();
     if (!Files.exists(webRootTmp)) {
