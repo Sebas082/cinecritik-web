@@ -142,6 +142,14 @@ public class Main {
       json(ex, 200, "{\"ok\":true}");
     });
 
+    server.createContext("/api/db-test", ex -> {
+      try (java.sql.Connection conn = DataStore.getConnection()) {
+        json(ex, 200, "{\"ok\":true,\"message\":\"Conectado exitosamente a PostgreSQL!\"}");
+      } catch (Exception e) {
+        json(ex, 500, "{\"ok\":false,\"error\":\"Error de conexion: " + e.getMessage() + "\"}");
+      }
+    });
+
     server.createContext("/api/catalogo", ex -> {
       if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
         json(ex, 405, "{\"ok\":false,\"error\":\"Method not allowed\"}");

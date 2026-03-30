@@ -16,9 +16,11 @@ public class DataStore {
     private static String getUrl() {
         String dbUrl = System.getenv("DATABASE_URL");
         if (dbUrl != null && !dbUrl.isEmpty()) {
-            // Neon.tech often provides postgres:// url, JDBC needs jdbc:postgresql://
+            // Neon.tech provides postgres:// or postgresql://, JDBC needs jdbc:postgresql://
             if (dbUrl.startsWith("postgres://")) {
                 dbUrl = "jdbc:postgresql://" + dbUrl.substring("postgres://".length());
+            } else if (dbUrl.startsWith("postgresql://")) {
+                dbUrl = "jdbc:postgresql://" + dbUrl.substring("postgresql://".length());
             } else if (!dbUrl.startsWith("jdbc:")) {
                 dbUrl = "jdbc:postgresql://" + dbUrl;
             }
