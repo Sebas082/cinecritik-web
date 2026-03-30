@@ -122,10 +122,6 @@ public class DataStore {
         }
     }
 
-    public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL);
-    }
-
     public static CatalogoPeliculas loadCatalog(String username) {
         String key = norm(username);
         CatalogoPeliculas cat = new CatalogoPeliculas();
