@@ -11,18 +11,45 @@ import java.util.List;
 import java.util.Map;
 
 public class DataStore {
-    private static final String URL = "jdbc:sqlite:data/cinecritik.db";
+    private static final String URL = getUrl();
+
+    private static String getUrl() {
+        String dbUrl = System.getenv("DATABASE_URL");
+        if (dbUrl != null && !dbUrl.isEmpty()) {
+            // Neon.tech often provides postgres:// url, JDBC needs jdbc:postgresql://
+            if (dbUrl.startsWith("postgres://")) {
+                dbUrl = "jdbc:postgresql://" + dbUrl.substring("postgres://".length());
+            } else if (!dbUrl.startsWith("jdbc:")) {
+                dbUrl = "jdbc:postgresql://" + dbUrl;
+            }
+            // Ensure sslmode is require for Neon
+            if (!dbUrl.contains("sslmode=")) {
+                dbUrl += (dbUrl.contains("?") ? "&" : "?") + "sslmode=require";
+            }
+            return dbUrl;
+        }
+        return "jdbc:sqlite:data/cinecritik.db";
+    }
+
+    private static boolean isPostgres() {
+        return URL.contains("postgresql");
+    }
 
     public static void initDB() {
-        new File("data").mkdirs();
+        if (!isPostgres()) {
+            new File("data").mkdirs();
+        }
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
+            String idType = isPostgres() ? "SERIAL PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+            String timestampType = isPostgres() ? "TIMESTAMP DEFAULT CURRENT_TIMESTAMP" : "DATETIME DEFAULT CURRENT_TIMESTAMP";
+
             stmt.execute("CREATE TABLE IF NOT EXISTS usuarios (" +
                     "username VARCHAR(50) PRIMARY KEY," +
                     "password VARCHAR(255) NOT NULL" +
                     ")");
 
             stmt.execute("CREATE TABLE IF NOT EXISTS multimedia (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "id " + idType + "," +
                     "username VARCHAR(50) NOT NULL," +
                     "tipo VARCHAR(20) NOT NULL," +
                     "titulo VARCHAR(150) NOT NULL," +
@@ -49,16 +76,16 @@ public class DataStore {
                     "multimedia_descripcion TEXT," +
                     "multimedia_poster TEXT," +
                     "multimedia_streaming_url TEXT," +
-                    "fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                    "fecha_creacion " + timestampType + "," +
                     "FOREIGN KEY (username) REFERENCES usuarios(username)" +
                     ")");
 
             stmt.execute("CREATE TABLE IF NOT EXISTS foro_comentarios (" +
-                    "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "id " + idType + "," +
                     "post_id INTEGER NOT NULL," +
                     "username VARCHAR(50) NOT NULL," +
                     "texto VARCHAR(240) NOT NULL," +
-                    "fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP," +
+                    "fecha_creacion " + timestampType + "," +
                     "FOREIGN KEY (post_id) REFERENCES foro_posts(id)," +
                     "FOREIGN KEY (username) REFERENCES usuarios(username)" +
                     ")");
@@ -307,12 +334,23 @@ public class DataStore {
                     pstmt.executeUpdate();
                 }
             } else {
-                String upsertSql = "INSERT OR REPLACE INTO foro_votos (post_id, username, is_like) VALUES (?, ?, ?)";
-                try (PreparedStatement pstmt = conn.prepareStatement(upsertSql)) {
-                    pstmt.setInt(1, postId);
-                    pstmt.setString(2, key);
-                    pstmt.setInt(3, isLike == 1 ? 1 : -1);
-                    pstmt.executeUpdate();
+                if (isPostgres()) {
+                    String upsertSql = "INSERT INTO foro_votos (post_id, username, is_like) VALUES (?, ?, ?) " +
+                                     "ON CONFLICT (post_id, username) DO UPDATE SET is_like = EXCLUDED.is_like";
+                    try (PreparedStatement pstmt = conn.prepareStatement(upsertSql)) {
+                        pstmt.setInt(1, postId);
+                        pstmt.setString(2, key);
+                        pstmt.setInt(3, isLike == 1 ? 1 : -1);
+                        pstmt.executeUpdate();
+                    }
+                } else {
+                    String upsertSql = "INSERT OR REPLACE INTO foro_votos (post_id, username, is_like) VALUES (?, ?, ?)";
+                    try (PreparedStatement pstmt = conn.prepareStatement(upsertSql)) {
+                        pstmt.setInt(1, postId);
+                        pstmt.setString(2, key);
+                        pstmt.setInt(3, isLike == 1 ? 1 : -1);
+                        pstmt.executeUpdate();
+                    }
                 }
             }
         } catch (SQLException e) {
