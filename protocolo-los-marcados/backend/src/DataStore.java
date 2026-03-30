@@ -15,24 +15,42 @@ public class DataStore {
 
     private static String getUrl() {
         String dbUrl = System.getenv("DATABASE_URL");
-        if (dbUrl != null && !dbUrl.isEmpty()) {
-            // Neon.tech provides postgres:// or postgresql://, JDBC needs jdbc:postgresql://
-            if (dbUrl.startsWith("postgres://")) {
-                dbUrl = "jdbc:postgresql://" + dbUrl.substring("postgres://".length());
-            } else if (dbUrl.startsWith("postgresql://")) {
-                dbUrl = "jdbc:postgresql://" + dbUrl.substring("postgresql://".length());
-            } else if (!dbUrl.startsWith("jdbc:")) {
-                dbUrl = "jdbc:postgresql://" + dbUrl;
-            }
-            // Ensure sslmode is require for Neon
-            if (!dbUrl.contains("sslmode=")) {
-                dbUrl += (dbUrl.contains("?") ? "&" : "?") + "sslmode=require";
-            }
-            System.out.println("[DB] Using PostgreSQL connection: " + dbUrl.replaceAll(":.*@", ":****@"));
-            return dbUrl;
+        if (dbUrl == null || dbUrl.isEmpty()) {
+            return "jdbc:sqlite:data/cinecritik.db";
         }
-        System.out.println("[DB] Using local SQLite fallback.");
-        return "jdbc:sqlite:data/cinecritik.db";
+
+        try {
+            // Handle both postgres:// and postgresql:// and convert to a standard URI for parsing
+            String cleanUrl = dbUrl.replace("jdbc:postgresql://", "postgres://");
+            if (!cleanUrl.startsWith("postgres://") && !cleanUrl.startsWith("postgresql://")) {
+                cleanUrl = "postgres://" + cleanUrl;
+            }
+            
+            java.net.URI uri = new java.net.URI(cleanUrl);
+            String host = uri.getHost();
+            int port = uri.getPort();
+            if (port == -1) port = 5432;
+            String path = uri.getPath();
+            String userInfo = uri.getUserInfo();
+            
+            String user = "";
+            String password = "";
+            if (userInfo != null && userInfo.contains(":")) {
+                String[] parts = userInfo.split(":");
+                user = parts[0];
+                password = parts[1];
+            }
+
+            String jdbcUrl = String.format("jdbc:postgresql://%s:%d%s?user=%s&password=%s&sslmode=require",
+                    host, port, path, user, password);
+            
+            System.out.println("[DB] URL parseada exitosamente.");
+            return jdbcUrl;
+        } catch (Exception e) {
+            System.err.println("[DB] Error parseando DATABASE_URL: " + e.getMessage());
+            // Fallback default if parsing fails
+            return dbUrl.startsWith("jdbc:") ? dbUrl : "jdbc:postgresql://" + dbUrl;
+        }
     }
 
     private static boolean isPostgres() {
