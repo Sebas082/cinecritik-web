@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 public class DataStore {
+    private static String dbUser = "";
+    private static String dbPass = "";
     private static final String URL = getUrl();
 
     private static String getUrl() {
@@ -20,12 +22,11 @@ public class DataStore {
         }
 
         try {
-            // 1. Remove all possible protocol prefixes to normalize the string
+            // Normalize protocol
             String s = dbUrl.replace("jdbc:postgresql://", "")
                             .replace("postgresql://", "")
                             .replace("postgres://", "");
 
-            // Expected format: user:password@host:port/database?options
             int atPos = s.lastIndexOf("@");
             if (atPos == -1) {
                 return "jdbc:postgresql://" + s;
@@ -34,28 +35,25 @@ public class DataStore {
             String auth = s.substring(0, atPos);
             String rest = s.substring(atPos + 1);
 
-            String user = "";
-            String pass = "";
             int colonPos = auth.indexOf(":");
             if (colonPos != -1) {
-                user = auth.substring(0, colonPos);
-                pass = auth.substring(colonPos + 1);
+                dbUser = auth.substring(0, colonPos);
+                dbPass = auth.substring(colonPos + 1);
             }
 
             int slashPos = rest.indexOf("/");
             String host = (slashPos != -1) ? rest.substring(0, slashPos) : rest;
             String dbAndParams = (slashPos != -1) ? rest.substring(slashPos) : "/";
             
-            // Strip existing parameters to avoid duplicates and re-add them cleanly
-            String dbOnly = dbAndParams;
-            if (dbOnly.contains("?")) {
-                dbOnly = dbOnly.substring(0, dbOnly.indexOf("?"));
+            if (dbAndParams.contains("?")) {
+                dbAndParams = dbAndParams.substring(0, dbAndParams.indexOf("?"));
             }
 
-            System.out.println("[DB] URL manual-parsed successfully.");
-            return "jdbc:postgresql://" + host + dbOnly + "?user=" + user + "&password=" + pass + "&sslmode=require";
+            // Supabase/Postgres connection URL without credentials in query string
+            System.out.println("[DB] URL split and formatted for secure connection.");
+            return "jdbc:postgresql://" + host + dbAndParams + "?sslmode=require";
         } catch (Exception e) {
-            System.err.println("[DB] Error in manual URL surgery: " + e.getMessage());
+            System.err.println("[DB] Error in secure URL parsing: " + e.getMessage());
             return dbUrl.startsWith("jdbc:") ? dbUrl : "jdbc:postgresql://" + dbUrl;
         }
     }
@@ -68,9 +66,12 @@ public class DataStore {
         if (isPostgres()) {
             try {
                 Class.forName("org.postgresql.Driver");
+                // Use the 3-argument version to safely handle special characters in passwords
+                if (!dbUser.isEmpty()) {
+                    return DriverManager.getConnection(URL, dbUser, dbPass);
+                }
             } catch (ClassNotFoundException e) {
-                System.err.println("[DB] Error: Driver PostgreSQL no encontrado en el classpath.");
-                throw new SQLException("PostgreSQL Driver not found", e);
+                System.err.println("[DB] Error: Driver PostgreSQL no encontrado.");
             }
         }
         return DriverManager.getConnection(URL);
@@ -89,8 +90,11 @@ public class DataStore {
                     "password VARCHAR(255) NOT NULL" +
                     ")");
 
+            // MULTIMEDIA: Forced to INTEGER PRIMARY KEY for manual Java ID management compatibility in Postgres
+            String multimediaIdType = isPostgres() ? "INTEGER PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
+
             stmt.execute("CREATE TABLE IF NOT EXISTS multimedia (" +
-                    "id " + idType + "," +
+                    "id " + multimediaIdType + "," +
                     "username VARCHAR(50) NOT NULL," +
                     "tipo VARCHAR(20) NOT NULL," +
                     "titulo VARCHAR(150) NOT NULL," +
