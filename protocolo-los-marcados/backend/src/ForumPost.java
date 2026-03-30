@@ -6,7 +6,8 @@ import java.time.LocalDateTime;
 public class ForumPost {
   private final int id;
   private final int multimediaId;
-  private final String usuario;
+  private final String multimediaUsername; // Propietario del contenido
+  private final String usuario;            // Quien posteó
   private final String titulo;
   private final String tipo;
   private final int anio;
@@ -18,6 +19,7 @@ public class ForumPost {
 
   public ForumPost(int id,
                    int multimediaId,
+                   String multimediaUsername,
                    String usuario,
                    String titulo,
                    String tipo,
@@ -28,6 +30,7 @@ public class ForumPost {
                    String streamingUrl) {
     this.id = id;
     this.multimediaId = multimediaId;
+    this.multimediaUsername = multimediaUsername;
     this.usuario = usuario;
     this.titulo = titulo;
     this.tipo = tipo;
@@ -41,6 +44,7 @@ public class ForumPost {
 
   public int getId() { return id; }
   public int getMultimediaId() { return multimediaId; }
+  public String getMultimediaUsername() { return multimediaUsername; }
   public String getUsuario() { return usuario; }
   public String getTitulo() { return titulo; }
   public String getTipo() { return tipo; }
@@ -54,6 +58,7 @@ public class ForumPost {
     return "{"
         + "\"id\":" + id + ","
         + "\"multimediaId\":" + multimediaId + ","
+        + "\"multimediaUsername\":\"" + esc(multimediaUsername) + "\","
         + "\"usuario\":\"" + esc(usuario) + "\","
         + "\"titulo\":\"" + esc(titulo) + "\","
         + "\"tipo\":\"" + esc(tipo) + "\","

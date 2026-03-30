@@ -327,7 +327,8 @@ public class Main {
       currentPosts.add(new ForumPost(
           nextId,
           m.getId(),
-          user,
+          user, // owner
+          user, // poster
           m.getTitulo(),
           m.getClass().getSimpleName(),
           m.getAnio(),
@@ -355,7 +356,7 @@ public class Main {
           if (p.getMultimediaId() <= 0) {
               int realId = DataStore.findMultimediaIdByTitle(p.getTitulo());
               if (realId > 0) {
-                  posts.set(i, new ForumPost(p.getId(), realId, p.getUsuario(), p.getTitulo(), p.getTipo(), p.getAnio(), p.getGenero(), p.getDescripcion(), p.getPosterDataUrl(), p.getStreamingUrl()));
+                  posts.set(i, new ForumPost(p.getId(), realId, p.getUsuario(), p.getUsuario(), p.getTitulo(), p.getTipo(), p.getAnio(), p.getGenero(), p.getDescripcion(), p.getPosterDataUrl(), p.getStreamingUrl()));
                   changed = true;
               }
           }

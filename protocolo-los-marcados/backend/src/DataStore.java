@@ -94,11 +94,9 @@ public class DataStore {
                     "password VARCHAR(255) NOT NULL" +
                     ")");
 
-            // MULTIMEDIA: Forced to INTEGER PRIMARY KEY for manual Java ID management compatibility in Postgres
-            String multimediaIdType = isPostgres() ? "INTEGER PRIMARY KEY" : "INTEGER PRIMARY KEY AUTOINCREMENT";
-
+            // MULTIMEDIA: Composite PK (id, username) to allow same IDs for different users
             stmt.execute("CREATE TABLE IF NOT EXISTS multimedia (" +
-                    "id " + multimediaIdType + "," +
+                    "id INTEGER NOT NULL," +
                     "username VARCHAR(50) NOT NULL," +
                     "tipo VARCHAR(20) NOT NULL," +
                     "titulo VARCHAR(150) NOT NULL," +
@@ -111,13 +109,15 @@ public class DataStore {
                     "duracion_min INTEGER," +
                     "temporadas INTEGER," +
                     "episodios INTEGER," +
+                    "PRIMARY KEY (id, username)," +
                     "FOREIGN KEY (username) REFERENCES usuarios(username)" +
                     ")");
 
             stmt.execute("CREATE TABLE IF NOT EXISTS foro_posts (" +
                     "id INTEGER PRIMARY KEY," +
                     "multimedia_id INTEGER DEFAULT 0," +
-                    "username VARCHAR(50) NOT NULL," +
+                    "multimedia_username VARCHAR(50)," + // Who owns the movie
+                    "username VARCHAR(50) NOT NULL," + // Who is posting
                     "multimedia_titulo VARCHAR(150)," +
                     "multimedia_tipo VARCHAR(20)," +
                     "multimedia_anio INTEGER," +
@@ -148,10 +148,15 @@ public class DataStore {
                     "FOREIGN KEY (username) REFERENCES usuarios(username)" +
                     ")");
 
-            // Migraciones manuales para columnas nuevas
-            try { stmt.execute("ALTER TABLE multimedia ADD COLUMN streaming_url TEXT"); } catch (SQLException e) {}
-            try { stmt.execute("ALTER TABLE foro_posts ADD COLUMN multimedia_id INTEGER DEFAULT 0"); } catch (SQLException e) {}
-            try { stmt.execute("ALTER TABLE foro_posts ADD COLUMN multimedia_streaming_url TEXT"); } catch (SQLException e) {}
+            // Migraciones manuales para columnas nuevas y cambios de PK
+            if (isPostgres()) {
+                try { stmt.execute("ALTER TABLE multimedia DROP CONSTRAINT multimedia_pkey CASCADE"); } catch (SQLException e) {}
+                try { stmt.execute("ALTER TABLE multimedia ADD PRIMARY KEY (id, username)"); } catch (SQLException e) {}
+                try { stmt.execute("ALTER TABLE foro_posts ADD COLUMN multimedia_username VARCHAR(50)"); } catch (SQLException e) {}
+                try { stmt.execute("ALTER TABLE multimedia ADD COLUMN streaming_url TEXT"); } catch (SQLException e) {}
+                try { stmt.execute("ALTER TABLE foro_posts ADD COLUMN multimedia_id INTEGER DEFAULT 0"); } catch (SQLException e) {}
+                try { stmt.execute("ALTER TABLE foro_posts ADD COLUMN multimedia_streaming_url TEXT"); } catch (SQLException e) {}
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -247,6 +252,7 @@ public class DataStore {
                 out.add(new ForumPost(
                     rs.getInt("id"),
                     rs.getInt("multimedia_id"),
+                    rs.getString("multimedia_username"), // Nuevo
                     rs.getString("username"),
                     rs.getString("multimedia_titulo"),
                     rs.getString("multimedia_tipo"),
@@ -269,19 +275,20 @@ public class DataStore {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("DELETE FROM foro_posts");
             }
-            String sql = "INSERT INTO foro_posts (id, multimedia_id, username, multimedia_titulo, multimedia_tipo, multimedia_anio, multimedia_genero, multimedia_descripcion, multimedia_poster, multimedia_streaming_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            String sql = "INSERT INTO foro_posts (id, multimedia_id, multimedia_username, username, multimedia_titulo, multimedia_tipo, multimedia_anio, multimedia_genero, multimedia_descripcion, multimedia_poster, multimedia_streaming_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 for (ForumPost p : posts) {
                     pstmt.setInt(1, p.getId());
                     pstmt.setInt(2, p.getMultimediaId());
-                    pstmt.setString(3, norm(p.getUsuario()));
-                    pstmt.setString(4, p.getTitulo());
-                    pstmt.setString(5, p.getTipo());
-                    pstmt.setInt(6, p.getAnio());
-                    pstmt.setString(7, p.getGenero());
-                    pstmt.setString(8, p.getDescripcion());
-                    pstmt.setString(9, p.getPosterDataUrl());
-                    pstmt.setString(10, p.getStreamingUrl());
+                    pstmt.setString(3, norm(p.getMultimediaUsername())); // Nuevo
+                    pstmt.setString(4, norm(p.getUsuario()));
+                    pstmt.setString(5, p.getTitulo());
+                    pstmt.setString(6, p.getTipo());
+                    pstmt.setInt(7, p.getAnio());
+                    pstmt.setString(8, p.getGenero());
+                    pstmt.setString(9, p.getDescripcion());
+                    pstmt.setString(10, p.getPosterDataUrl());
+                    pstmt.setString(11, p.getStreamingUrl());
                     pstmt.executeUpdate();
                 }
             }
