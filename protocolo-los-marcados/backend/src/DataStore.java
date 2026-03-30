@@ -1,3 +1,7 @@
+/**
+ * DataStore - CineCritik Final Version (Supabase Edition)
+ * Final Build: 2026-03-30
+ */
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
