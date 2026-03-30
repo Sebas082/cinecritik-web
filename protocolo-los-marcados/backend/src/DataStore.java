@@ -20,35 +20,42 @@ public class DataStore {
         }
 
         try {
-            // Handle both postgres:// and postgresql:// and convert to a standard URI for parsing
-            String cleanUrl = dbUrl.replace("jdbc:postgresql://", "postgres://");
-            if (!cleanUrl.startsWith("postgres://") && !cleanUrl.startsWith("postgresql://")) {
-                cleanUrl = "postgres://" + cleanUrl;
-            }
-            
-            java.net.URI uri = new java.net.URI(cleanUrl);
-            String host = uri.getHost();
-            int port = uri.getPort();
-            if (port == -1) port = 5432;
-            String path = uri.getPath();
-            String userInfo = uri.getUserInfo();
-            
-            String user = "";
-            String password = "";
-            if (userInfo != null && userInfo.contains(":")) {
-                String[] parts = userInfo.split(":");
-                user = parts[0];
-                password = parts[1];
+            // 1. Remove all possible protocol prefixes to normalize the string
+            String s = dbUrl.replace("jdbc:postgresql://", "")
+                            .replace("postgresql://", "")
+                            .replace("postgres://", "");
+
+            // Expected format: user:password@host:port/database?options
+            int atPos = s.lastIndexOf("@");
+            if (atPos == -1) {
+                return "jdbc:postgresql://" + s;
             }
 
-            String jdbcUrl = String.format("jdbc:postgresql://%s:%d%s?user=%s&password=%s&sslmode=require",
-                    host, port, path, user, password);
+            String auth = s.substring(0, atPos);
+            String rest = s.substring(atPos + 1);
+
+            String user = "";
+            String pass = "";
+            int colonPos = auth.indexOf(":");
+            if (colonPos != -1) {
+                user = auth.substring(0, colonPos);
+                pass = auth.substring(colonPos + 1);
+            }
+
+            int slashPos = rest.indexOf("/");
+            String host = (slashPos != -1) ? rest.substring(0, slashPos) : rest;
+            String dbAndParams = (slashPos != -1) ? rest.substring(slashPos) : "/";
             
-            System.out.println("[DB] URL parseada exitosamente.");
-            return jdbcUrl;
+            // Strip existing parameters to avoid duplicates and re-add them cleanly
+            String dbOnly = dbAndParams;
+            if (dbOnly.contains("?")) {
+                dbOnly = dbOnly.substring(0, dbOnly.indexOf("?"));
+            }
+
+            System.out.println("[DB] URL manual-parsed successfully.");
+            return "jdbc:postgresql://" + host + dbOnly + "?user=" + user + "&password=" + pass + "&sslmode=require";
         } catch (Exception e) {
-            System.err.println("[DB] Error parseando DATABASE_URL: " + e.getMessage());
-            // Fallback default if parsing fails
+            System.err.println("[DB] Error in manual URL surgery: " + e.getMessage());
             return dbUrl.startsWith("jdbc:") ? dbUrl : "jdbc:postgresql://" + dbUrl;
         }
     }
