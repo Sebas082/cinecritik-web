@@ -288,7 +288,9 @@ public class DataStore {
 
     public static int findMultimediaIdByTitle(String title) {
         if (title == null || title.isEmpty()) return 0;
-        String sql = "SELECT id FROM multimedia WHERE titulo LIKE ? LIMIT 1";
+        String sql = isPostgres() ? 
+            "SELECT id FROM multimedia WHERE titulo ILIKE ? LIMIT 1" :
+            "SELECT id FROM multimedia WHERE titulo LIKE ? LIMIT 1";
         try (Connection conn = getConnection(); PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, title);
             try (ResultSet rs = pstmt.executeQuery()) {
