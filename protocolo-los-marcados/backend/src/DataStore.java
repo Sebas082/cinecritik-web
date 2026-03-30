@@ -26,13 +26,27 @@ public class DataStore {
             if (!dbUrl.contains("sslmode=")) {
                 dbUrl += (dbUrl.contains("?") ? "&" : "?") + "sslmode=require";
             }
+            System.out.println("[DB] Using PostgreSQL connection: " + dbUrl.replaceAll(":.*@", ":****@"));
             return dbUrl;
         }
+        System.out.println("[DB] Using local SQLite fallback.");
         return "jdbc:sqlite:data/cinecritik.db";
     }
 
     private static boolean isPostgres() {
         return URL.contains("postgresql");
+    }
+
+    public static Connection getConnection() throws SQLException {
+        if (isPostgres()) {
+            try {
+                Class.forName("org.postgresql.Driver");
+            } catch (ClassNotFoundException e) {
+                System.err.println("[DB] Error: Driver PostgreSQL no encontrado en el classpath.");
+                throw new SQLException("PostgreSQL Driver not found", e);
+            }
+        }
+        return DriverManager.getConnection(URL);
     }
 
     public static void initDB() {
